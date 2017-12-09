@@ -7,7 +7,7 @@
 
 [以中文查看](./README.md)
 
-roadhog ia a cli tool with `server`, `build` and `test` commands. It has the same experience of create-react-app, slightly different configuration, and also **provide [JSON format configuration](https://github.com/sorrycc/roadhog#Configuration)**。
+roadhog is a cli tool with `server`, `build` and `test` commands. It has the same experience of create-react-app, slightly different configuration, and also **provide [JSON format configuration](https://github.com/sorrycc/roadhog#Configuration)**。
 
 ---
 
