@@ -17,7 +17,7 @@ roadhog is a cli tool with `server`, `build` and `test` commands. It has the sam
 
 ## Why roadhog
 
-[create-react-app](https://github.com/facebookincubator/create-react-app) can not be configured, but we have different configuration requirements. I believe more than I will have this idea.
+[create-react-app](https://github.com/facebookincubator/create-react-app) can not be configured, but we have different configuration requirements. I believe many people have this idea just like me.
 
 ## Getting Started
 
