@@ -120,7 +120,7 @@ export default {
 
 ### 智能重启
 
-配置文件修改的修改会触发 roadhog server 的自动重启，会触发重启的文件有：
+配置文件的修改会触发 roadhog server 的自动重启，会触发重启的文件有：
 
 * `.roadhogrc`
 * `.roadhogrc.js`
