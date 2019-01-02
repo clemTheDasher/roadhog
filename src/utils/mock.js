@@ -1,13 +1,11 @@
-import fs, { existsSync } from 'fs';
+import { existsSync } from 'fs';
 import assert from 'assert';
 import chokidar from 'chokidar';
 import chalk from 'chalk';
-import proxy from 'express-http-proxy';
+import proxy from 'http-proxy-middleware';
 import url from 'url';
-import { join } from 'path';
 import bodyParser from 'body-parser';
 import getPaths from '../getPaths';
-import winPath from './winPath';
 
 const debug = require('debug')('roadhog:mock');
 
@@ -42,20 +40,26 @@ function createMockHandler(method, path, value) {
   };
 }
 
-function createProxy(method, path, target) {
-  return proxy(target, {
-    filter(req) {
-      return method ? req.method.toLowerCase() === method.toLowerCase() : true;
-    },
-    forwardPath(req) {
-      let matchPath = req.originalUrl;
-      const matches = matchPath.match(path);
-      if (matches.length > 1) {
-        matchPath = matches[1];
-      }
-      return winPath(join(url.parse(target).path, matchPath));
-    },
-  });
+function createProxy(method, pathPattern, target) {
+  const filter = (_, req) => {
+    return method ? req.method.toLowerCase() === method.toLowerCase() : true;
+  };
+  const parsedUrl = url.parse(target);
+  const realTarget = [parsedUrl.protocol, parsedUrl.host].join('//');
+  const targetPath = parsedUrl.path;
+
+  const pathRewrite = (path, req) => {
+    let matchPath = req.originalUrl;
+    const matches = matchPath.match(pathPattern);
+
+    if (matches.length > 1) {
+      matchPath = matches[1];
+    }
+
+    return path.replace(req.originalUrl.replace(matchPath, ''), targetPath);
+  };
+
+  return proxy(filter, { target: realTarget, pathRewrite });
 }
 
 export function applyMock(devServer) {
@@ -88,13 +92,8 @@ function realApplyMock(devServer) {
   const config = getConfig();
   const { app } = devServer;
 
-  devServer.use(bodyParser.json({ limit: '5mb' }));
-  devServer.use(
-    bodyParser.urlencoded({
-      extended: true,
-      limit: '5mb',
-    }),
-  );
+  const proxyRules = [];
+  const mockRules = [];
 
   Object.keys(config).forEach(key => {
     const keyParsed = parseKey(key);
@@ -112,13 +111,41 @@ function realApplyMock(devServer) {
       if (/\(.+\)/.test(path)) {
         path = new RegExp(`^${path}$`);
       }
-      app.use(path, createProxy(keyParsed.method, path, config[key]));
+      proxyRules.push({
+        path,
+        method: keyParsed.method,
+        target: config[key],
+      });
     } else {
-      app[keyParsed.method](
-        keyParsed.path,
-        createMockHandler(keyParsed.method, keyParsed.path, config[key]),
-      );
+      mockRules.push({
+        path: keyParsed.path,
+        method: keyParsed.method,
+        target: config[key],
+      });
     }
+  });
+
+  proxyRules.forEach(proxy => {
+    app.use(proxy.path, createProxy(proxy.method, proxy.path, proxy.target));
+  });
+
+  /**
+   * body-parser must be placed after http-proxy-middleware
+   * https://github.com/chimurai/http-proxy-middleware/blob/master/recipes/modify-post.md
+   */
+  devServer.use(bodyParser.json({ limit: '5mb', strict: false }));
+  devServer.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: '5mb',
+    }),
+  );
+
+  mockRules.forEach(mock => {
+    app[mock.method](
+      mock.path,
+      createMockHandler(mock.method, mock.path, mock.target),
+    );
   });
 
   // 调整 stack，把 historyApiFallback 放到最后

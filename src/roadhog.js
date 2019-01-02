@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { fork } from 'child_process';
 
-require('graceful-process')();
+require('graceful-process')({ logLevel: 'warn' });
 
 const script = process.argv[2];
 const args = process.argv.slice(3);
@@ -37,7 +37,6 @@ switch (aliasedScript) {
   case 'build':
   case 'dev':
   case 'test':
-    require('atool-monitor').emit();
     const proc = fork(
       require.resolve(`../lib/scripts/${aliasedScript}`),
       args,

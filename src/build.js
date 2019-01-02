@@ -1,17 +1,27 @@
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import build from 'af-webpack/build';
 import getConfig from 'af-webpack/getUserConfig';
+import notify from 'umi-notify';
 import getWebpackConfig from './getWebpackConfig';
 import getPaths from './getPaths';
 import registerBabel from './registerBabel';
+import BuildStatistics from 'build-statistics-webpack-plugin';
+import BigBrother from 'bigbrother-webpack-plugin';
 
 const debug = require('debug')('roadhog:build');
 
 export default function(opts = {}) {
-  const { cwd = process.cwd(), watch } = opts;
+  notify.onBuildStart({ name: 'roadhog', version: '2-beta' });
+
+  const { cwd = process.cwd(), watch, entry } = opts;
 
   const babel = resolve(__dirname, './babel.js');
   const paths = getPaths(cwd);
+  const stagesPath = join(
+    __dirname,
+    '../.run/build-statistics/compilation.json',
+  );
+  const roadhogPkg = require(join(__dirname, '../package.json'));
 
   return new Promise(resolve => {
     // register babel for config files
@@ -30,12 +40,36 @@ export default function(opts = {}) {
       config,
       babel,
       paths,
+      entry,
     });
+
+    webpackConfig.plugins.push(
+      new BuildStatistics({
+        path: stagesPath,
+      }),
+      new BigBrother({
+        cwd,
+        tool: {
+          name: 'roadhog',
+          version: roadhogPkg.version,
+          stagesPath,
+        },
+      }),
+    );
 
     build({
       webpackConfig,
       watch,
-      success: resolve,
+      success() {
+        notify.onBuildComplete(
+          { name: 'roadhog', version: '2-beta' },
+          { err: null },
+        );
+        resolve();
+      },
+      fail(err) {
+        notify.onBuildComplete({ name: 'roadhog', version: '2-beta' }, { err });
+      },
     });
   });
 }

@@ -66,7 +66,7 @@ Files in the public directory would be copied to the output directory (by defaul
 
 ## Configuration
 
-umi's webpack part is based on the af-webpack's implementation. For configuration, create `.webpackrc` in the project root. The format is JSON, e.g.
+roadhog's webpack part is based on the af-webpack's implementation. For configuration, create `.webpackrc` in the project root. The format is JSON, e.g.
 
 ```js
 {
@@ -89,6 +89,7 @@ Index:
 * [define](#define)
 * [externals](#externals)
 * [alias](#alias)
+* [extraResolveExtensions](#extraresolveextensions)
 * [browserslist](#browserslist)
 * [publicPath](#publicpath)
 * [outputPath](#outputpath)
@@ -110,6 +111,14 @@ Index:
 * [env](#env)
 
 ### entry
+
+Specify webpack entries, support [glob](https://github.com/isaacs/node-glob) format.
+
+suppose your project is multipages, wanting files in src/pages as entries. your can do the followings.
+
+```
+"entry": "src/pages/*.js"
+```
 
 ### theme
 
@@ -159,6 +168,10 @@ e.g.
 ### alias
 
 Configure webpack's [resolve.alias](https://webpack.js.org/configuration/resolve/#resolve-alias) property.
+
+### extraResolveExtensions
+
+Configure webpack's [resolve.extensions](https://webpack.js.org/configuration/resolve/#resolve-extensions) property.
 
 ### browserslist
 
@@ -323,8 +336,10 @@ You can temporarily configure some parameters for environment variables, includi
 * `PORT`, default 8000
 * `HOST`, default localhost
 * `ANALYZE`, whether to analyze the output bundle in `roadhog build`
-* `DISABLE_ESLINT`, disable eslint check
-* `NO_COMPRESS`, don't compress file in `roadhog build`
+* `ESLINT`, set `none` disable eslint check
+* `TSLINT`, set `none` disable tslint check
+* `COMPRESS`, set `none` to disable file compressing in `roadhog build`
+* `BROWSER`, set `none` to disable browser open in `roadhog dev`
 
 e.g. start dev server with port 3000,
 

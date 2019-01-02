@@ -1,6 +1,9 @@
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import dev from 'af-webpack/dev';
+import BuildStatistics from 'build-statistics-webpack-plugin';
+import BigBrother from 'bigbrother-webpack-plugin';
 import chalk from 'chalk';
+import notify from 'umi-notify';
 import getConfig, {
   watchConfigs,
   unwatchConfigs,
@@ -12,8 +15,16 @@ import { applyMock } from './utils/mock';
 
 const debug = require('debug')('roadhog:dev');
 
+function once(fn) {
+  if (!fn.__runned) {
+    fn.__runned = true;
+    fn();
+  }
+}
+
 export default function runDev(opts = {}) {
-  const { cwd = process.cwd() } = opts;
+  notify.onDevStart({ name: 'roadhog', version: '2-beta' });
+  const { cwd = process.cwd(), entry } = opts;
 
   const babel = resolve(__dirname, './babel.js');
   const paths = getPaths(cwd);
@@ -29,7 +40,7 @@ export default function runDev(opts = {}) {
   let returnedWatchConfig = null;
   try {
     const configObj = getConfig({ cwd });
-    config = configObj.config;
+    ({ config } = configObj);
     returnedWatchConfig = configObj.watch;
     debug(`user config: ${JSON.stringify(config)}`);
   } catch (e) {
@@ -51,7 +62,31 @@ export default function runDev(opts = {}) {
     config,
     babel,
     paths,
+    entry,
   });
+
+  const stagesPath = join(
+    __dirname,
+    '../.run/build-statistics/compilation.json',
+  );
+  const roadhogPkg = require(join(__dirname, '../package.json')); // eslint-disable-line
+  webpackConfig.plugins.push(
+    new BuildStatistics({
+      path: stagesPath,
+    }),
+    new BigBrother({
+      cwd,
+      tool: {
+        name: 'roadhog',
+        version: roadhogPkg.version,
+        stagesPath,
+      },
+    }),
+  );
+
+  function onCompileDone() {
+    notify.onDevComplete({ name: 'roadhog', version: '2-beta' });
+  }
 
   dev({
     webpackConfig,
@@ -67,5 +102,8 @@ export default function runDev(opts = {}) {
       returnedWatchConfig(devServer);
     },
     openBrowser: true,
+    onCompileDone() {
+      once(onCompileDone);
+    },
   });
 }
